@@ -350,6 +350,8 @@ def create_panel():
             {put('GameplayVisible', 'Visible')}
             (if Visible
                 {ui.scalar('SetVisibility', 'Widget', 'self', '"SelfHitTestInvisible"')}
+                (if (and {g('Expanded')} (CallFunction|HasObject :Object {g('Host')}))
+                    {ui.host('RequestRefresh')})
                 (CallFunction|LayoutTick) (return true))
             (CallFunction|EndDrag)
             {ui.scalar('SetVisibility', 'Widget', 'self', '"Collapsed"')}
@@ -358,6 +360,8 @@ def create_panel():
             {put('Expanded', '(not ' + g('Expanded') + ')')}
             (if {g('Expanded')}
                 {ui.scalar('SetVisibility', 'Widget', g('PanelCanvas'), '"SelfHitTestInvisible"')}
+                (if (and {g('GameplayVisible')} (CallFunction|HasObject :Object {g('Host')}))
+                    {ui.host('RequestRefresh')})
                 (return true))
             (CallFunction|EndDrag)
             {ui.scalar('SetVisibility', 'Widget', g('PanelCanvas'), '"Collapsed"')}

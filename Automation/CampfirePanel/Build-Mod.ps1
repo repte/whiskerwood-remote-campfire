@@ -25,6 +25,7 @@ foreach ($required in @($editor, $uat, $unrealPak, $python, $project, $descripto
         (Join-Path $PSScriptRoot 'generator.py'), (Join-Path $PSScriptRoot 'prepare_package.py'),
         (Join-Path $PSScriptRoot 'test_precision.py'), (Join-Path $PSScriptRoot 'test_ui.py'),
         (Join-Path $PSScriptRoot 'test_public.py'),
+        (Join-Path $PSScriptRoot 'test_performance.py'),
         (Join-Path $PSScriptRoot 'test_catalog.py'), (Join-Path $PSScriptRoot 'test_localization.py'),
         (Join-Path $PSScriptRoot 'translations.json'),
         (Join-Path $ProjectRoot 'Plugins\CampfireProbeEditor\CampfireProbeEditor.uplugin'))) {
@@ -74,6 +75,7 @@ Invoke-CampfireEditorScript -Script 'test_localization.py' -Marker 'CAMPFIRE_LOC
 Invoke-CampfireEditorScript -Script 'test_precision.py' -Marker 'CAMPFIRE_PRECISION_TESTS_PASS'
 Invoke-CampfireEditorScript -Script 'test_ui.py' -Marker 'CAMPFIRE_UI_TESTS_PASS'
 Invoke-CampfireEditorScript -Script 'test_public.py' -Marker 'CAMPFIRE_PUBLIC_TESTS_PASS'
+Invoke-CampfireEditorScript -Script 'test_performance.py' -Marker 'CAMPFIRE_PERFORMANCE_TESTS_PASS'
 if (-not (Test-Path -LiteralPath $sourceDescriptor -PathType Leaf) -or
         (Get-FileHash -LiteralPath $descriptor -Algorithm SHA256).Hash -cne
         (Get-FileHash -LiteralPath $sourceDescriptor -Algorithm SHA256).Hash) {

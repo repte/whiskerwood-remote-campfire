@@ -21,6 +21,14 @@ Campfires are identified from player-owned heaters with a temporary fuel source.
 The interface shows fuel percentages and changes their color at low fuel levels.
 It does not perform automatic refills.
 
+Discovery still runs once per second. Membership comparison uses a temporary
+set, keeping the existing row order and widgets when the campfire membership
+has not changed. Adding or removing a campfire rebuilds the list as before.
+Fuel-row updates stop while the list is closed or hidden by the gameplay HUD.
+Opening the list, or restoring an expanded list after a menu, requests a refresh
+on the next actor tick instead of waiting for the one-second interval. That
+refresh still passes through the normal session and refill-safety checks.
+
 ## Localization
 
 The interface automatically follows the game's active language. The catalog in
@@ -127,8 +135,18 @@ The included checks are:
 - `test_precision.py`: native fuel types and refill arithmetic.
 - `test_ui.py`: compiled panel behavior, HUD visibility, and fuel presentation.
 - `test_public.py`: public-build requirements, including the absence of diagnostic logging.
+- `test_performance.py`: compiled closed/hidden update guards, next-tick refresh requests, and membership changes without disturbing stable row order.
 
 These checks do not replace gameplay testing after a game update.
+
+`benchmark_performance.py` measures compiled `RefreshList` calls for 10 through
+2,000 synthetic campfires in the editor. Run it with `-ExecutePythonScript`
+and `-unattended -nullrhi -nosound`. By default it loads the generated project
+assets and writes JSON to `Saved/CampfirePerformance/refreshlist-benchmark.json`.
+The optional `CAMPFIRE_BENCHMARK_MOUNT`, `CAMPFIRE_BENCHMARK_OUTPUT`, and
+`CAMPFIRE_BENCHMARK_LABEL` environment variables select extracted cooked assets,
+the output file, and a comparison label. Results include all samples and asset
+hashes; they exclude rendering, rebuilding rows, refilling, and real-game FPS.
 
 ## Release Contents
 

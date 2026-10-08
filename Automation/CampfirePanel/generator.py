@@ -94,6 +94,8 @@ with toolset_registry.tool_raising_exceptions():
     for name in ("Heaters", "CurrentHeaters"):
         if name not in BP.list_variables(bp):
             BP.add_object_variable(bp, name, types["Heater"], container_type=ContainerType.ARRAY)
+    if "HeaterMembership" not in BP.list_variables(bp):
+        BP.add_object_variable(bp, "HeaterMembership", types["Heater"], container_type=ContainerType.SET)
 
     definitions = {
         "HasObject": ([("Object", unreal.Object.static_class())], "bool"),
@@ -112,7 +114,7 @@ with toolset_registry.tool_raising_exceptions():
         "FillHeater": ([("Heater", types["Heater"])], "bool"),
         "RefillOne": ([("Heater", types["Heater"])], "bool"),
         "RefillAll": ([], "bool"), "RefreshList": ([], "bool"),
-        "UpdateRows": ([], "bool"), "CreatePanel": ([], "bool"),
+        "UpdateRows": ([], "bool"), "CreatePanel": ([], "bool"), "RequestRefresh": ([], "bool"),
         "HudAllowsDisplay": ([("InputHud", native("PlayHud")),
                               ("InputController", native("PlayerController_Play"))], "bool"),
         "SyncPanelVisibility": ([], "bool"),
@@ -437,6 +439,8 @@ with toolset_registry.tool_raising_exceptions():
         {invoke('AddToViewport', 'UserWidget', 'widget', ':ZOrder 35')}
         (CallFunction|SyncPanelVisibility)
         (CallFunction|Status :Message "") (return true))'''
+    # Rebuild a scratch set from the displayed list. Set lookup avoids scanning
+    # the old array once per candidate, while the arrays retain row order.
     code["RefreshList"] = f'''(fn RefreshList ()
         (Utilities|Array|Clear {g('CurrentHeaters')})
         {world('w_')}
@@ -444,8 +448,10 @@ with toolset_registry.tool_raising_exceptions():
           (bind supported (CallFunction|IsCampfire :Heater heater))
           (if supported (Utilities|Array|Add {g('CurrentHeaters')} heater)))
         {put('Available', '(== (Utilities|Array|Length ' + g('CurrentHeaters') + ') (Utilities|Array|Length ' + g('Heaters') + '))')}
+        (Utilities|Set|Clear {g('HeaterMembership')})
+        (Utilities|Set|AddItems {g('HeaterMembership')} {g('Heaters')})
         (for heater {g('CurrentHeaters')}
-          (if (not (Utilities|Array|ContainsItem {g('Heaters')} heater)) {put('Available', 'false')}))
+          (if (not (Utilities|Set|ContainsItem {g('HeaterMembership')} heater)) {put('Available', 'false')}))
         (if {g('Available')} (return true))
         {invoke('ClearChildren', 'PanelWidget', prop('WBPCampfirePanel', g('Panel'), 'RowsBox'))}
         (Utilities|Array|Clear {g('Rows')}) {put('Heaters', g('CurrentHeaters'))}
@@ -459,7 +465,10 @@ with toolset_registry.tool_raising_exceptions():
             (Utilities|Array|Add {g('Rows')} row)))
         (return true))'''
     code["UpdateRows"] = f'''(fn UpdateRows ()
+        (if {g('ShuttingDown')} (return false))
         (if (not {valid(g('Panel'))}) (return false))
+        (if (not (and {prop('WBPCampfirePanel', g('Panel'), 'Expanded')}
+                     {prop('WBPCampfirePanel', g('Panel'), 'GameplayVisible')})) (return false))
         {put('AnyRefill', 'false')}
         (for index (range (Utilities|Array|Length {g('Rows')}))
           (bind row {at(g('Rows'), 'index')})
@@ -475,6 +484,10 @@ with toolset_registry.tool_raising_exceptions():
                   ' :Capacity 100 :Percent percent :CanRefill enabled :Detail ' + tr('refill'))})))
         {panel_call('SetCanRefill', ':Enabled ' + g('AnyRefill'))}
         (return true))'''
+    # UI callbacks only invalidate the timer. The next Pump tick still checks
+    # Ready, without recursively entering SyncPanelVisibility from its callback.
+    code["RequestRefresh"] = f'''(fn RequestRefresh ()
+        {put('HasClock', 'false')} (return true))'''
     code["Pump"] = f'''(fn Pump ()
         (if {g('ShuttingDown')} (return false))
         (CallFunction|SyncPanelVisibility)
