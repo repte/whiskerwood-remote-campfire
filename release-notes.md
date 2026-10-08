@@ -12,7 +12,10 @@ listed campfires using your wood, and hide the panel with its campfire icon.
 
 ## Installation
 
-Close the game and extract `RemoteCampfire-v0.1.0.zip` into
+[Subscribe on Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3815611495),
+then restart the game after Steam finishes downloading.
+
+For manual installation, close the game and extract `RemoteCampfire-v0.1.0.zip` into
 `%LOCALAPPDATA%\Whiskerwood\Saved\mods\`. The resulting `CampfirePanel` folder
 contains `CampfirePanel.pak` and `CampfirePanel.uplugin`.
 Use either this local package or a Workshop copy, never both.
