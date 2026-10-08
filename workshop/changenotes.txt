@@ -1,0 +1,1 @@
+v0.1.0: First release. Draggable campfire list with fuel levels, individual refill and refill-all controls. Supports Whiskerwood 0.7.209.0.

@@ -1,0 +1,16 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1",
+  "FriendlyName": "Remote Campfire Authoring",
+  "Description": "Editor-only Blueprint authoring helper. Not required or included in the game package.",
+  "Category": "Modding",
+  "EnabledByDefault": true,
+  "CanContainContent": false,
+  "Modules": [
+    { "Name": "CampfireProbeEditor", "Type": "Editor", "LoadingPhase": "PostEngineInit" }
+  ],
+  "Plugins": [
+    { "Name": "Suzie", "Enabled": true }
+  ]
+}

@@ -1,0 +1,112 @@
+# Remote Campfire Development
+
+Public version: `0.1.0`. Runtime mod ID: `CampfirePanel`.
+Supported game: Whiskerwood `0.7.209.0` for Windows, using the compatible custom
+Unreal Engine 5.8 build and Whiskerwood modkit.
+
+## Runtime
+
+Three Blueprint assets under `/Game/Mods/CampfirePanel` provide the mod:
+
+- `BP_MapLoad`: discovers campfires, refreshes their displayed fuel, and handles refill requests.
+- `WBP_CampfirePanel`: draggable list, visibility icon, and refill-all button.
+- `WBP_CampfireRow`: fuel display and individual refill button.
+
+The list starts closed. Its visibility follows the gameplay HUD, including
+loading, menus, and saving overlays. Normal simulation pauses do not hide it.
+Toggling or entering a menu preserves the panel's expanded state and position
+within the session. Position is not saved between sessions.
+
+Campfires are identified from player-owned heaters with a temporary fuel source.
+The interface shows fuel percentages and changes their color at low fuel levels.
+It does not perform automatic refills.
+
+## Refill Workaround
+
+The inspected modkit does not expose the native campfire refill action to
+Blueprints. The mod therefore reproduces its wood-to-fuel operation using
+available game types and an existing signed resource operation.
+
+For each wood increment, the mod:
+
+1. Checks game version, session readiness, target ownership, refill eligibility, and wood availability.
+2. Finds a player-accessible granary containing physical wood.
+3. Saves the current primary-warehouse reference and the affected construction-statistics entry.
+4. Routes the existing resource operation to that granary and requests a debit of one wood.
+5. Restores the temporary warehouse reference and statistics entry immediately.
+6. Verifies the wood debit before increasing the campfire's remaining burn time.
+
+Fuel duration accounts for the heater's overdrive and the dirty-fuel policy.
+Calculations use the game's native single-precision fuel values. One request
+applies up to four wood increments per campfire, stopping at the game's refill
+limit or when eligible wood runs out.
+
+An unexpected debit or fuel-write result disables further refills until the
+session is reloaded. Unsupported game versions are rejected rather than trying
+an unverified operation. This is a compatibility-sensitive workaround, not a
+newly exposed official refill API.
+
+The editor-only authoring helper creates the required Blueprint accessors. It
+does not ship in the mod package. The release contains no runtime DLL or
+diagnostic logging.
+
+## Limits
+
+- Only Whiskerwood `0.7.209.0` is supported. A game update requires renewed verification.
+- An accessible granary with physical wood is required, even when cloud storage contains wood.
+- Warehouse proximity uses actor origins; the game uses entrance positions, so the selected source can differ.
+- The current interface is in German.
+- Position and expanded state persist only within the session.
+- Refilling is always requested by the player, individually or for the list.
+
+## Build
+
+Prerequisites are a compatible Whiskerwood modkit, its custom Unreal Engine,
+and the Windows C++ build tools needed by the editor.
+
+Copy this repository's `Plugins/CampfireProbeEditor` directory into the modkit's
+`Plugins` directory and compile the modkit's editor target once. This helper is
+needed for authoring, not for playing the published mod.
+
+Run the build script from this repository, with the paths to your engine and
+modkit:
+
+```powershell
+& .\Automation\CampfirePanel\Build-Mod.ps1 -EngineRoot 'D:\WWEngine' -ProjectRoot '..\Modkit'
+```
+
+The script copies only this mod's assets into the supplied modkit, generates the
+runtime Blueprints, runs the focused checks, and cooks an isolated mod package.
+It does not install the mod or publish an upload.
+
+The included checks are:
+
+- `test_precision.py`: native fuel types and refill arithmetic.
+- `test_ui.py`: compiled panel behavior, HUD visibility, and fuel presentation.
+- `test_public.py`: public-build requirements, including the absence of diagnostic logging.
+
+These checks do not replace gameplay testing after a game update.
+
+## Release Contents
+
+`RemoteCampfire-v0.1.0.zip` contains only:
+
+```text
+CampfirePanel/
+  CampfirePanel.pak
+  CampfirePanel.uplugin
+```
+
+The package contains the three runtime Blueprints and their cooked sidecars.
+Editor helpers, test scripts, logs, and unrelated mod assets are excluded.
+Native game fonts and textures remain references to the installed game.
+
+The Workshop upload uses the same verified two-file package. Its description
+and change notes are under `workshop/`; creating a release does not submit a
+Workshop item.
+
+## Credits
+
+Inspired by [FireWatch - Campfire Monitor](https://steamcommunity.com/sharedfiles/filedetails/?id=3807454089) by rinku.
+
+Unofficial community mod built with the [Whiskerwood modkit](https://github.com/Whiskerwood-Modding/Whiskerwood-Project) by Buckminsterfullerene and Whiskerwood-Modding. Game assets belong to their respective owners.

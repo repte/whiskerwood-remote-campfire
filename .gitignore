@@ -1,0 +1,37 @@
+# Unreal build products and local authoring caches
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+.vs/
+*.sln
+*.suo
+*.VC.db
+__pycache__/
+*.py[cod]
+
+# Local configuration, diagnostics, and temporary files
+.env
+.env.*
+GameInstallDirectory.txt
+*.log
+*.tmp
+*.bak
+*.whisker
+*.sav
+PROGRESS.md
+LocalDiagnostics/
+Temp/
+tmp/
+.worktrees/
+
+# Compiled delivery packages and release assembly
+.release-artifacts/
+Delivery/
+dist/
+*.pak
+*.zip
+
+# Local publishing state
+workshop/item-id.txt
+workshop/publish-result.json

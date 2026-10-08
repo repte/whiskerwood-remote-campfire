@@ -1,0 +1,4 @@
+* text=auto
+*.uasset binary
+*.png binary
+*.pak binary
