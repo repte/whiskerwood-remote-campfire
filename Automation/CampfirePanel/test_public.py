@@ -31,7 +31,8 @@ for name in ("BP_MapLoad", "WBP_CampfirePanel", "WBP_CampfireRow"):
             "RefillUnit": {"ready", "iscampfire", "duration", "findsource",
                            "cfreadconstructionstats", "cfrestoreconstructionstats",
                            "cfgrantwood", "cfsetburntime", "cfsetprimarywarehouse", "setfailed"},
-            "Pump": {"getmodapi", "setapi", "ready", "syncpanelvisibility"},
+            "Pump": {"getmodapi", "setapi", "ready", "syncpanelvisibility", "refreshlanguage"},
+            "RefreshLanguage": {"getlocmanager", "getactivelanguage", "setlanguage"},
             "Ready": {"isdevelopmentmode", "getversionlabel", "getversionaccepted", "getfailed"},
         }
         for graph_name, required_calls in required.items():

@@ -1,6 +1,6 @@
 # Remote Campfire Development
 
-Public version: `0.1.0`. Runtime mod ID: `CampfirePanel`.
+Version: `0.1.1`. Runtime mod ID: `CampfirePanel`.
 Supported game: Whiskerwood `0.7.209.0` for Windows, using the compatible custom
 Unreal Engine 5.8 build and Whiskerwood modkit.
 
@@ -20,6 +20,45 @@ within the session. Position is not saved between sessions.
 Campfires are identified from player-owned heaters with a temporary fuel source.
 The interface shows fuel percentages and changes their color at low fuel levels.
 It does not perform automatic refills.
+
+## Localization
+
+The interface automatically follows the game's active language. The catalog in
+`Automation/CampfirePanel/translations.json` covers all 17 native language IDs:
+
+| ID | Language |
+| --- | --- |
+| `en` | English |
+| `fr` | French |
+| `de` | German |
+| `it` | Italian |
+| `es` | Spanish |
+| `ru` | Russian |
+| `ja` | Japanese |
+| `zh` | Simplified Chinese |
+| `ko` | Korean |
+| `tr` | Turkish |
+| `pt` | Brazilian Portuguese |
+| `pl` | Polish |
+| `ua` | Ukrainian |
+| `cs` | Czech |
+| `hu` | Hungarian |
+| `zh-tw` | Traditional Chinese |
+| `es-mx` | Latin American Spanish |
+
+The generator embeds the catalog into the runtime Blueprints; no external
+translation file is required by the installed mod. Language lookup uses the
+game's `LocManager`, normalizes case and underscores, prefers exact regional
+matches, then tries a supported language prefix. Unknown languages fall back to
+English.
+
+The existing one-second refresh checks for language changes and relabels the
+panel, tooltips, rows, and current status. Reformatting status messages preserves
+their numeric values. Language changes preserve panel state and do not request
+a refill or change refill safety checks. Fuel and refill behavior is unchanged.
+
+Text uses the game's native Poppins composite font and its Noto fallbacks. These
+remain references to the installed game rather than bundled font assets.
 
 ## Refill Workaround
 
@@ -55,7 +94,6 @@ diagnostic logging.
 - Only Whiskerwood `0.7.209.0` is supported. A game update requires renewed verification.
 - An accessible granary with physical wood is required, even when cloud storage contains wood.
 - Warehouse proximity uses actor origins; the game uses entrance positions, so the selected source can differ.
-- The current interface is in German.
 - Position and expanded state persist only within the session.
 - Refilling is always requested by the player, individually or for the list.
 
@@ -79,8 +117,13 @@ The script copies only this mod's assets into the supplied modkit, generates the
 runtime Blueprints, runs the focused checks, and cooks an isolated mod package.
 It does not install the mod or publish an upload.
 
+After a successful generation, `-UseGeneratedAssets` reruns every check and
+packages the assets already in the modkit. Omit it after changing the generators.
+
 The included checks are:
 
+- `test_catalog.py`: all 17 language IDs, complete translations, regional variants, and template placeholders, without loading Unreal.
+- `test_localization.py`: compiled translation lookup, regional matching, English fallback, and relabeling existing UI and status without triggering refills.
 - `test_precision.py`: native fuel types and refill arithmetic.
 - `test_ui.py`: compiled panel behavior, HUD visibility, and fuel presentation.
 - `test_public.py`: public-build requirements, including the absence of diagnostic logging.
@@ -89,7 +132,7 @@ These checks do not replace gameplay testing after a game update.
 
 ## Release Contents
 
-`RemoteCampfire-v0.1.0.zip` contains only:
+`RemoteCampfire-v0.1.1.zip` contains only:
 
 ```text
 CampfirePanel/

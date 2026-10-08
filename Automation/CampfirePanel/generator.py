@@ -18,6 +18,9 @@ from editor_toolset.toolsets import blueprint_dsl
 
 ROOT = "/Game/Mods/CampfirePanel"
 HERE = Path(__file__).resolve().parent
+CATALOG = json.loads((HERE / "translations.json").read_text(encoding="utf-8"))
+LANGUAGES = CATALOG["languages"]
+STRINGS = CATALOG["strings"]
 native = lambda name: unreal.load_class(None, "/Script/ProjectArco." + name)
 g = lambda name: f"(Variables|Default|Get{name})"
 put = lambda name, value: f"(Variables|Default|Set{name} {value})"
@@ -70,11 +73,14 @@ with toolset_registry.tool_raising_exceptions():
         "bool": "Busy Failed ShuttingDown Initialized HasClock AnyRefill Available LastFillSuccess VersionChecked VersionAccepted",
         "real": "LastPoll BestDistance",
         "int": "AppliedUnits RefilledHeaters BaseDuration BeforeBank BeforeStock",
-        "string": "LastStatus",
+        "string": "LastStatus CurrentLanguage",
     }.items():
         for name in names.split():
             if name not in BP.list_variables(bp):
                 BP.add_variable(bp, name, kind)
+    for name in ("TextKeys", "TextValues"):
+        if name not in BP.list_variables(bp):
+            BP.add_variable(bp, name, "string", container_type=ContainerType.ARRAY)
     # "float" aliases to double in BlueprintTools; copy a native float pin type.
     float_type = unreal.BlueprintEditorLibrary.get_member_variable_type(
         bp, "/Script/Engine.Actor.InitialLifeSpan")
@@ -92,6 +98,11 @@ with toolset_registry.tool_raising_exceptions():
     definitions = {
         "HasObject": ([("Object", unreal.Object.static_class())], "bool"),
         "Status": ([("Message", "string")], "bool"),
+        "Localize": ([("Key", "string"), ("Language", "string")], "string"),
+        "Text": ([("Key", "string")], "string"),
+        "RowTitle": ([("Index", "int")], "string"),
+        "SetLanguage": ([("Language", "string")], "bool"),
+        "RefreshLanguage": ([], "bool"), "RenderStatus": ([], "bool"),
         "Ready": ([], "bool"), "Pump": ([], "bool"), "Shutdown": ([], "bool"),
         "IsCampfire": ([("Heater", types["Heater"])], "bool"),
         "Duration": ([("Heater", types["Heater"])], "int"),
@@ -199,10 +210,51 @@ with toolset_registry.tool_raising_exceptions():
                          for version in ("0.7.209", "0.7.209.0")]
     enum_patches = {}
     code = {}
+    exact, regional = [], []
+    for index, language in enumerate(LANGUAGES):
+        value = at(g("TextValues"), f"(+ (* index {len(LANGUAGES)}) {index})")
+        exact.append(f'(if (Utilities|String|EqualExactly(String) normalized "{language}") (return {value}))')
+    for language in sorted(LANGUAGES, key=len, reverse=True):
+        value = at(g("TextValues"), f"(+ (* index {len(LANGUAGES)}) {LANGUAGES.index(language)})")
+        regional.append(f'(if (Utilities|String|StartsWith :SourceString normalized :InPrefix "{language}-") (return {value}))')
+    code["Localize"] = f'''(fn Localize (Key Language)
+        (bind index (Utilities|Array|FindItem {g('TextKeys')} Key))
+        (if (< index 0) (return Key))
+        (bind normalized (Utilities|String|Replace :SourceString (Utilities|String|ToLower Language) :From "_" :To "-" :SearchCase "CaseSensitive"))
+        {' '.join(exact)} {' '.join(regional)}
+        (return {at(g('TextValues'), f'(* index {len(LANGUAGES)})')}))'''
+    code["Text"] = f'''(fn Text (Key)
+        (bind translated (CallFunction|Localize :Key Key :Language {g('CurrentLanguage')})) (return translated))'''
+    tr = lambda key: f'(CallFunction|Text :Key "{key}")'
+    code["RowTitle"] = f'''(fn RowTitle (Index)
+        (bind title (Utilities|String|Replace :SourceString {tr('row_name')} :From "{{number}}" :To {number('(+ Index 1)')} :SearchCase "CaseSensitive"))
+        (return title))'''
+    code["SetLanguage"] = f'''(fn SetLanguage (Language)
+        {put('CurrentLanguage', 'Language')}
+        (if {valid(g('Panel'))}
+          {panel_call('ApplyLabels', ':Title ' + tr('title') + ' :RefillAll ' + tr('refill_all'))}
+          (CallFunction|RenderStatus))
+        (for index (range (Utilities|Array|Length {g('Rows')}))
+          (bind row {at(g('Rows'), 'index')})
+          (if {valid('row')}
+            {row_call('SetLabels', 'row', ':Title (CallFunction|RowTitle :Index index) :Detail ' + tr('refill'))}))
+        (return true))'''
+    code["RefreshLanguage"] = f'''(fn RefreshLanguage ()
+        (bind manager (Class|Backbone|GetLocManager))
+        (if (not {valid('manager')}) (return false))
+        (bind language (Utilities|String|ToString(Name) (Class|LocManager|GetActiveLanguage :self manager)))
+        (if (Utilities|String|EqualExactly(String) language {g('CurrentLanguage')}) (return true))
+        (CallFunction|SetLanguage :Language language) (return true))'''
+    code["RenderStatus"] = f'''(fn RenderStatus ()
+        (if (not {valid(g('Panel'))}) (return false))
+        (bind message (CallFunction|Text :Key {g('LastStatus')}))
+        (bind counts (Utilities|String|Replace :SourceString message :From "{{count}}" :To {number(g('RefilledHeaters'))} :SearchCase "CaseSensitive"))
+        (bind rendered (Utilities|String|Replace :SourceString counts :From "{{wood}}" :To {number(g('AppliedUnits'))} :SearchCase "CaseSensitive"))
+        {panel_call('SetStatus', ':Message rendered')} (return true))'''
     code["HasObject"] = '(fn HasObject (Object) (Utilities|IsValid Object (:"Is Valid" (return true)) (:"Is Not Valid" (return false))))'
     code["Status"] = f'''(fn Status (Message)
         {put('LastStatus', 'Message')}
-        (if {valid(g('Panel'))} {panel_call('SetStatus', ':Message Message')}) (return true))'''
+        (CallFunction|RenderStatus) (return true))'''
     code["Ready"] = f'''(fn Ready ()
         (if (or {g('ShuttingDown')} {g('Failed')}) (return false))
         (if ({node('IsDevelopmentMode')}) (return false))
@@ -339,13 +391,13 @@ with toolset_registry.tool_raising_exceptions():
         (bind afterBank {wood()}) (bind afterStock (CallFunction|WoodIn :Warehouse source))
         (if (not (and (== afterBank (- {g('BeforeBank')} 1)) (or (== afterStock (- {g('BeforeStock')} 1)) (== afterStock {g('BeforeStock')}))))
           {put('Failed', 'true')}
-          (CallFunction|Status :Message "Auffuellen fehlgeschlagen. Bitte Spielstand neu laden.")
+          (CallFunction|Status :Message "failed")
           (return false))
         (CallFunction|CfSetBurnTime :Heater Heater :Remaining {g('BurnScratch')})
         (bind afterFuel {burn()})
         (if (!= afterFuel {g('BurnScratch')})
           {put('Failed', 'true')}
-          (CallFunction|Status :Message "Auffuellen fehlgeschlagen. Bitte Spielstand neu laden.")
+          (CallFunction|Status :Message "failed")
           (return false))
         {put('AppliedUnits', '(+ ' + g('AppliedUnits') + ' 1)')}
         (return true))'''
@@ -356,7 +408,6 @@ with toolset_registry.tool_raising_exceptions():
           (if (not changed) (return {g('LastFillSuccess')}))
           {put('LastFillSuccess', 'true')})
         (return {g('LastFillSuccess')}))'''
-    summary = append('"Aufgefuellt: "', number(g('RefilledHeaters')), '" | Holz: "', number(g('AppliedUnits')))
     for name, body in (
         ("RefillOne", f'''(bind changed (CallFunction|FillHeater :Heater Heater))
             (if changed {put('RefilledHeaters', '1')})'''),
@@ -372,7 +423,7 @@ with toolset_registry.tool_raising_exceptions():
             (CallFunction|UpdateRows)
             {body}
             {put('Busy', 'false')}
-            (if (not {g('Failed')}) (CallFunction|Status :Message {summary}))
+            (if (not {g('Failed')}) (CallFunction|Status :Message "summary"))
             (CallFunction|UpdateRows) (return (> {g('AppliedUnits')} 0)))'''
     code["CreatePanel"] = f'''(fn CreatePanel ()
         (if {valid(g('Panel'))} (return true))
@@ -382,6 +433,7 @@ with toolset_registry.tool_raising_exceptions():
         (if (not {valid('widget')}) (return false))
         {put('Panel', 'widget')}
         {setprop('WBPCampfirePanel', 'widget', 'Host', 'self')}
+        (CallFunction|SetLanguage :Language {g('CurrentLanguage')})
         {invoke('AddToViewport', 'UserWidget', 'widget', ':ZOrder 35')}
         (CallFunction|SyncPanelVisibility)
         (CallFunction|Status :Message "") (return true))'''
@@ -419,8 +471,8 @@ with toolset_registry.tool_raising_exceptions():
               (bind percent (select (> duration 0) (/ remaining (select (> duration 0) duration 1)) 0.0))
               (bind enabled (and (not {g('Busy')}) (and (not {g('Failed')}) (and {can_refill('heater')} (> {wood()} 0)))))
               (if enabled {put('AnyRefill', 'true')})
-              {row_call('Present', 'row', ':Title ' + append('"Campfire "', number('(+ index 1)')) + ' :Fuel ' + trunc('(* percent 100.0)') +
-                  ' :Capacity 100 :Percent percent :CanRefill enabled :Detail "Auffuellen"')})))
+              {row_call('Present', 'row', ':Title (CallFunction|RowTitle :Index index) :Fuel ' + trunc('(* percent 100.0)') +
+                  ' :Capacity 100 :Percent percent :CanRefill enabled :Detail ' + tr('refill'))})))
         {panel_call('SetCanRefill', ':Enabled ' + g('AnyRefill'))}
         (return true))'''
     code["Pump"] = f'''(fn Pump ()
@@ -429,6 +481,7 @@ with toolset_registry.tool_raising_exceptions():
         (bind now (Utilities|Time|GetRealTimeSeconds))
         (if (and {g('HasClock')} (and (>= now {g('LastPoll')}) (< (- now {g('LastPoll')}) 1.0))) (return false))
         {put('HasClock', 'true')} {put('LastPoll', 'now')}
+        (CallFunction|RefreshLanguage)
         (bind ready (CallFunction|Ready))
         (if (not ready)
           (if {valid(g('Panel'))} {panel_call('SetCanRefill', ':Enabled false')}) (return false))
@@ -460,6 +513,9 @@ with toolset_registry.tool_raising_exceptions():
         (event EventEndPlay (EndPlayReason) (CallFunction|Shutdown))''')
     BP.compile_blueprint(bp, warnings_as_errors=True)
     cdo = unreal.get_default_object(bp.generated_class())
+    cdo.set_editor_property("CurrentLanguage", "en")
+    cdo.set_editor_property("TextKeys", list(STRINGS))
+    cdo.set_editor_property("TextValues", [text for translations in STRINGS.values() for text in translations])
     cdo.set_editor_property("hidden", True)
     tick = cdo.get_editor_property("primary_actor_tick")
     tick.set_editor_property("start_with_tick_enabled", True)
@@ -473,7 +529,7 @@ with toolset_registry.tool_raising_exceptions():
         assert unreal.EditorAssetLibrary.save_loaded_asset(widget)
     descriptor_path = HERE.parents[1] / "Content" / "Mods" / "CampfirePanel" / "CampfirePanel.uplugin"
     descriptor = json.loads(descriptor_path.read_text(encoding="utf-8-sig"))
-    assert descriptor["Name"] == "CampfirePanel" and descriptor["Version"] == "0.1.0", descriptor
+    assert descriptor["Name"] == "CampfirePanel" and descriptor["Version"] == "0.1.1", descriptor
     destination = Path(unreal.Paths.project_content_dir()) / "Mods" / "CampfirePanel" / "CampfirePanel.uplugin"
     if destination.resolve() != descriptor_path.resolve():
         destination.write_bytes(descriptor_path.read_bytes())

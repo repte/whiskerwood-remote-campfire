@@ -1,13 +1,16 @@
-# Remote Campfire v0.1.0
+# Remote Campfire v0.1.1
 
-Check fuel levels and refill campfires from a draggable panel. Refill one or all
-listed campfires using your wood, and hide the panel with its campfire icon.
+The panel now automatically matches all 17 game languages and updates its labels
+when you change the game's language. Includes separate Traditional Chinese and
+Latin American Spanish translations, with native game fonts for supported scripts.
+
+Fuel display, refill behavior, and game compatibility are unchanged.
 
 ## Compatibility
 
 - Windows, Whiskerwood `0.7.209.0`; refilling is disabled on other versions.
 - Requires wood in an accessible granary; cloud-only wood is not supported.
-- Manual refilling, German interface, session-only panel position.
+- Manual refilling, session-only panel position.
 - No diagnostic logging in this release.
 
 ## Installation
@@ -15,7 +18,7 @@ listed campfires using your wood, and hide the panel with its campfire icon.
 [Subscribe on Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3815611495),
 then restart the game after Steam finishes downloading.
 
-For manual installation, close the game and extract `RemoteCampfire-v0.1.0.zip` into
+For manual installation, close the game and extract `RemoteCampfire-v0.1.1.zip` into
 `%LOCALAPPDATA%\Whiskerwood\Saved\mods\`. The resulting `CampfirePanel` folder
 contains `CampfirePanel.pak` and `CampfirePanel.uplugin`.
 Use either this local package or a Workshop copy, never both.

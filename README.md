@@ -12,6 +12,7 @@
 - Refill one campfire or all listed campfires using your wood.
 - Drag the panel where you need it; hide or show it with the campfire icon.
 - Use it while paused. It stays hidden in menus.
+- Automatically matches all 17 game languages, including changes during play.
 
 Refills only when you click.
 
@@ -19,8 +20,8 @@ Refills only when you click.
 
 **[Subscribe on Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3815611495)**, then restart the game after Steam finishes downloading.
 
-For manual installation, download `RemoteCampfire-v0.1.0.zip` from the
-[v0.1.0 release](https://github.com/repte/whiskerwood-remote-campfire/releases/tag/v0.1.0).
+For manual installation, download `RemoteCampfire-v0.1.1.zip` from the
+[v0.1.1 release](https://github.com/repte/whiskerwood-remote-campfire/releases/tag/v0.1.1).
 Close the game and extract its `CampfirePanel` folder into:
 
 ```text
@@ -35,7 +36,6 @@ Use either a local installation or a Workshop copy, never both.
 
 - Requires wood in a player-accessible granary. Cloud-only wood is not supported.
 - Panel position is remembered for the current session only.
-- The current in-game interface is in German.
 
 ## How Refilling Works
 

@@ -1,6 +1,7 @@
 param(
     [string]$EngineRoot = 'D:\WWEngine',
-    [string]$ProjectRoot = ''
+    [string]$ProjectRoot = '',
+    [switch]$UseGeneratedAssets
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,28 +14,31 @@ $ProjectRoot = (Resolve-Path -LiteralPath $ProjectRoot).Path
 $editor = Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
 $uat = Join-Path $EngineRoot 'Engine\Build\BatchFiles\RunUAT.bat'
 $unrealPak = Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealPak.exe'
+$python = Join-Path $EngineRoot 'Engine\Binaries\ThirdParty\Python3\Win64\python.exe'
 $project = Join-Path $ProjectRoot 'Whiskerwood.uproject'
 $metadataPath = Join-Path $ProjectRoot 'Saved\CampfirePanel-PackageSetup.json'
 $repositoryContent = Join-Path $repository 'Content\Mods\CampfirePanel'
 $descriptor = Join-Path $repositoryContent 'CampfirePanel.uplugin'
 $sourceDescriptor = Join-Path $ProjectRoot 'Content\Mods\CampfirePanel\CampfirePanel.uplugin'
 $expected = @('BP_MapLoad', 'WBP_CampfirePanel', 'WBP_CampfireRow')
-foreach ($required in @($editor, $uat, $unrealPak, $project, $descriptor,
+foreach ($required in @($editor, $uat, $unrealPak, $python, $project, $descriptor,
         (Join-Path $PSScriptRoot 'generator.py'), (Join-Path $PSScriptRoot 'prepare_package.py'),
         (Join-Path $PSScriptRoot 'test_precision.py'), (Join-Path $PSScriptRoot 'test_ui.py'),
         (Join-Path $PSScriptRoot 'test_public.py'),
+        (Join-Path $PSScriptRoot 'test_catalog.py'), (Join-Path $PSScriptRoot 'test_localization.py'),
+        (Join-Path $PSScriptRoot 'translations.json'),
         (Join-Path $ProjectRoot 'Plugins\CampfireProbeEditor\CampfireProbeEditor.uplugin'))) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "Required file missing: $required" }
 }
 $mod = Get-Content -LiteralPath $descriptor -Raw | ConvertFrom-Json
-if ($mod.Name -cne 'CampfirePanel' -or $mod.Version -cne '0.1.0' -or $mod.EngineVersion -cne '5.8') {
+if ($mod.Name -cne 'CampfirePanel' -or $mod.Version -cne '0.1.1' -or $mod.EngineVersion -cne '5.8') {
     throw 'Unexpected CampfirePanel descriptor identity, version, or engine'
 }
 if (@(Get-Process -Name '*Whiskerwood*', '*UnrealEditor*' -ErrorAction SilentlyContinue).Count) {
     throw 'Close Whiskerwood and the editor before building.'
 }
 $targetContent = Split-Path $sourceDescriptor -Parent
-if ([IO.Path]::GetFullPath($repositoryContent) -ne [IO.Path]::GetFullPath($targetContent)) {
+if (-not $UseGeneratedAssets -and [IO.Path]::GetFullPath($repositoryContent) -ne [IO.Path]::GetFullPath($targetContent)) {
     [void](New-Item -ItemType Directory -Path $targetContent -Force)
     foreach ($name in @('BP_MapLoad.uasset', 'WBP_CampfirePanel.uasset', 'WBP_CampfireRow.uasset', 'PAL_CampfirePanel.uasset', 'CampfirePanel.uplugin')) {
         Copy-Item -LiteralPath (Join-Path $repositoryContent $name) -Destination (Join-Path $targetContent $name)
@@ -61,7 +65,12 @@ function Invoke-CampfireEditorScript {
     }
 }
 
-Invoke-CampfireEditorScript -Script 'generator.py' -Marker 'CAMPFIRE_GENERATED_PASS'
+& $python (Join-Path $PSScriptRoot 'test_catalog.py') -v *> (Join-Path $logs 'test_catalog.log')
+if ($LASTEXITCODE -ne 0) { throw 'CampfirePanel translation catalog checks failed' }
+if (-not $UseGeneratedAssets) {
+    Invoke-CampfireEditorScript -Script 'generator.py' -Marker 'CAMPFIRE_GENERATED_PASS'
+}
+Invoke-CampfireEditorScript -Script 'test_localization.py' -Marker 'CAMPFIRE_LOCALIZATION_TESTS_PASS'
 Invoke-CampfireEditorScript -Script 'test_precision.py' -Marker 'CAMPFIRE_PRECISION_TESTS_PASS'
 Invoke-CampfireEditorScript -Script 'test_ui.py' -Marker 'CAMPFIRE_UI_TESTS_PASS'
 Invoke-CampfireEditorScript -Script 'test_public.py' -Marker 'CAMPFIRE_PUBLIC_TESTS_PASS'

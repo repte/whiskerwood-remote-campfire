@@ -2,6 +2,6 @@
   "EngineVersion": "5.8",
   "Name": "CampfirePanel",
   "Description": "Remote Campfire: view campfire fuel and refill one or all campfires from a movable panel.",
-  "Version": "0.1.0",
+  "Version": "0.1.1",
   "CreatedBy": "repte"
 }

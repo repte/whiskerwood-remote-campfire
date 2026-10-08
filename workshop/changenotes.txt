@@ -1,1 +1,1 @@
-v0.1.0: First release. Draggable campfire list with fuel levels, individual refill and refill-all controls. Supports Whiskerwood 0.7.209.0.
+v0.1.1: The panel now automatically matches all 17 game languages, including language changes during play. Fuel display, refill behavior, and Whiskerwood 0.7.209.0 compatibility are unchanged.

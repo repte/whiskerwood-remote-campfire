@@ -3,6 +3,8 @@
 Run after BP_MapLoad and its RefillOne and RefillAll signatures exist.
 The host assigns Host/Heater references and calls row.Present and panel.SetStatus.
 """
+import json
+from pathlib import Path
 import re
 
 import unreal
@@ -12,6 +14,8 @@ from editor_toolset.toolsets import blueprint_dsl
 
 
 ROOT = "/Game/Mods/CampfirePanel"
+CATALOG = json.loads(Path(__file__).with_name("translations.json").read_text(encoding="utf-8"))
+ENGLISH = {key: translations[0] for key, translations in CATALOG["strings"].items()}
 UMG = unreal.get_default_object(unreal.UMGToolSet)
 HOST = unreal.load_class(None, ROOT + "/BP_MapLoad.BP_MapLoad_C")
 HEATER = unreal.load_class(None, "/Script/ProjectArco.FueledHeater")
@@ -93,9 +97,9 @@ class Author:
         font = widget.get_editor_property("font")
         font.set_editor_property("size", size * 0.75)
         game_font = unreal.load_asset("/Game/Assets/Fonts/Poppins/Poppins")
-        if game_font:
-            font.set_editor_property("font_object", game_font)
-            font.set_editor_property("typeface_font_name", "Semi Bold" if size >= 16 else "Regular")
+        assert game_font, "Native composite font with Noto fallback is required"
+        font.set_editor_property("font_object", game_font)
+        font.set_editor_property("typeface_font_name", "Semi Bold" if size >= 16 else "Regular")
         widget.set_editor_property("font", font)
         widget.set_visibility(unreal.SlateVisibility.HIT_TEST_INVISIBLE)
         return widget, slot
@@ -204,7 +208,7 @@ def create_row():
     frame.set_editor_property("background", brush("292F30"))
     frame.set_padding(unreal.Margin(0, 0, 0, 0))
     root, _ = ui.add(unreal.CanvasPanel, "Contents", frame)
-    title, slot = ui.label("TitleText", root, "Campfire", 15, variable=True)
+    title, slot = ui.label("TitleText", root, ENGLISH["row_name"].format(number=1), 15, variable=True)
     rectangle(slot, 10, 7, 102, 22, maximum=(1, 0))
     title.set_clipping(unreal.WidgetClipping.CLIP_TO_BOUNDS)
     fuel, slot = ui.label("FuelText", root, "0 %", 15, MUTED, True)
@@ -223,7 +227,7 @@ def create_row():
     rectangle(slot, -42, 9, 32, 32, minimum=(1, 0))
     style_button(refresh)
     refresh.set_is_enabled(False)
-    refresh.set_tool_tip_text("Auffuellen")
+    refresh.set_tool_tip_text(ENGLISH["refill"])
     icon_size, slot = ui.add(unreal.SizeBox, "RefreshIconSize", refresh)
     icon_size.set_width_override(18)
     icon_size.set_height_override(18)
@@ -238,6 +242,7 @@ def create_row():
     icon.set_visibility(unreal.SlateVisibility.HIT_TEST_INVISIBLE)
     ui.declare({"Present": [("Title", "string"), ("Fuel", "int"), ("Capacity", "int"),
                               ("Percent", "float"), ("CanRefill", "bool"), ("Detail", "string")],
+                "SetLabels": [("Title", "string"), ("Detail", "string")],
                 "RefillClicked": [], "HasObject": [("Object", unreal.Object.static_class())]},
                objects={"Heater": HEATER})
     g = ui.get
@@ -248,14 +253,17 @@ def create_row():
     fuel_tint = f"(select (<= Percent 0.2) {tint(CRITICAL_FUEL)} (select (<= Percent 0.4) {tint(LOW_FUEL)} {tint(GOLD)}))"
     ui.emit({
         "HasObject": VALID,
-        "Present": f'''(fn Present (Title Fuel Capacity Percent CanRefill Detail)
+        "SetLabels": f'''(fn SetLabels (Title Detail)
             {ui.scalar('SetText', 'TextBlock', g('TitleText'), ui.text('Title'))}
+            {ui.scalar('SetToolTipText', 'Widget', g('RefreshButton'), ui.text('Detail'))}
+            (return true))''',
+        "Present": f'''(fn Present (Title Fuel Capacity Percent CanRefill Detail)
+            (CallFunction|SetLabels :Title Title :Detail Detail)
             {ui.scalar('SetText', 'TextBlock', g('FuelText'), ui.text(fuel_string))}
             {ui.scalar('SetColorAndOpacity', 'TextBlock', g('FuelText'), f'({make_slate} :SpecifiedColor {fuel_tint})')}
             {ui.scalar('SetPercent', 'ProgressBar', g('FuelBar'), '(select (< Percent 0.0) 0.0 (select (> Percent 1.0) 1.0 Percent))')}
             {ui.scalar('SetFillColorAndOpacity', 'ProgressBar', g('FuelBar'), fuel_tint)}
             {ui.scalar('SetIsEnabled', 'Widget', g('RefreshButton'), 'CanRefill')}
-            {ui.scalar('SetToolTipText', 'Widget', g('RefreshButton'), ui.text('Detail'))}
             (return true))''',
         "RefillClicked": f'''(fn RefillClicked ()
             (if (not (CallFunction|HasObject :Object {g('Host')})) (return false))
@@ -273,7 +281,7 @@ def create_panel():
     rectangle(slot, 16, -22, 44, 44, minimum=(0, 0.5))
     slot.set_z_order(1)
     style_button(toggle)
-    toggle.set_tool_tip_text("Lagerfeuer")
+    toggle.set_tool_tip_text(ENGLISH["title"])
     icon, slot = ui.add(unreal.Image, "CampfireIcon", toggle)
     texture = unreal.load_asset("/Game/Assets/Rendered/Icons/Building/campfire")
     assert texture, "Native campfire icon unavailable"
@@ -290,7 +298,7 @@ def create_panel():
     header, slot = ui.add(unreal.Button, "DragHeader", panel, True)
     rectangle(slot, 8, 8, 156, 36, maximum=(1, 0))
     style_button(header, True)
-    title, slot = ui.label("PanelTitle", header, "Lagerfeuer", 17, GOLD)
+    title, slot = ui.label("PanelTitle", header, ENGLISH["title"], 17, GOLD, True)
     slot.set_padding(unreal.Margin(8, 0, 0, 0))
     slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_LEFT)
     slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
@@ -298,7 +306,8 @@ def create_panel():
     rectangle(slot, -148, 10, 138, 32, minimum=(1, 0))
     style_button(refresh)
     refresh.set_is_enabled(False)
-    title, slot = ui.label("RefreshAllText", refresh, "Alle auffuellen", 13)
+    title, slot = ui.label("RefreshAllText", refresh, ENGLISH["refill_all"], 13, INK, True)
+    title.set_editor_property("auto_wrap_text", True)
     slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
     slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
     scroll, slot = ui.add(unreal.ScrollBox, "RowsScroll", panel, True)
@@ -307,10 +316,12 @@ def create_panel():
     scroll.set_editor_property("scrollbar_padding", unreal.Margin(3, 0, 0, 0))
     scroll.set_editor_property("allow_overscroll", False)
     ui.add(unreal.VerticalBox, "RowsBox", scroll, True)
-    status, slot = ui.label("StatusText", panel, "Lagerfeuer werden gesucht...", 12, MUTED, True)
+    status, slot = ui.label("StatusText", panel, ENGLISH["searching"], 12, MUTED, True)
+    status.set_editor_property("auto_wrap_text", True)
     rectangle(slot, 12, -32, 12, 26, minimum=(0, 1), maximum=(1, 1))
     status.set_clipping(unreal.WidgetClipping.CLIP_TO_BOUNDS)
     ui.declare({"SetStatus": [("Message", "string")], "SetCanRefill": [("Enabled", "bool")], "RefillAllClicked": [],
+                "ApplyLabels": [("Title", "string"), ("RefillAll", "string")],
                 "ApplyGameplayVisibility": [("Visible", "bool")], "TogglePanel": [],
                 "BeginDrag": [], "EndDrag": [], "LayoutTick": [], "ClampPanel": [],
                 "HasObject": [("Object", unreal.Object.static_class())]},
@@ -327,6 +338,12 @@ def create_panel():
     ui.emit({
         "HasObject": VALID,
         "SetStatus": f"(fn SetStatus (Message) {ui.scalar('SetText', 'TextBlock', g('StatusText'), ui.text('Message'))} (return true))",
+        "ApplyLabels": f'''(fn ApplyLabels (Title RefillAll)
+            {ui.scalar('SetText', 'TextBlock', g('PanelTitle'), ui.text('Title'))}
+            {ui.scalar('SetText', 'TextBlock', g('RefreshAllText'), ui.text('RefillAll'))}
+            {ui.scalar('SetToolTipText', 'Widget', g('ToggleButton'), ui.text('Title'))}
+            {ui.scalar('SetToolTipText', 'Widget', g('AllButton'), ui.text('RefillAll'))}
+            (return true))''',
         "SetCanRefill": f"(fn SetCanRefill (Enabled) {ui.scalar('SetIsEnabled', 'Widget', g('AllButton'), 'Enabled')} (return true))",
         "ApplyGameplayVisibility": f'''(fn ApplyGameplayVisibility (Visible)
             (if (== Visible {g('GameplayVisible')}) (return true))
