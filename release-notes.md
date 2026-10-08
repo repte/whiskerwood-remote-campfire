@@ -1,10 +1,15 @@
-# Remote Campfire v0.1.1
+# Remote Campfire v0.1.2
 
-The panel now automatically matches all 17 game languages and updates its labels
-when you change the game's language. Includes separate Traditional Chinese and
-Latin American Spanish translations, with native game fonts for supported scripts.
+This update reduces panel overhead in settlements with many campfires.
 
-Fuel display, refill behavior, and game compatibility are unchanged.
+- Fuel-row updates stop while the list is closed or hidden by menus.
+- Opening the list, or returning to an expanded list after a menu, refreshes it
+  on the next game tick instead of waiting for the one-second interval.
+- Campfire membership checks now scale linearly with the number of campfires.
+  Unchanged lists keep their row order and existing widgets.
+
+All 17 game languages remain supported. Fuel display, refill behavior, and
+Whiskerwood `0.7.209.0` compatibility are unchanged.
 
 ## Compatibility
 
@@ -18,7 +23,7 @@ Fuel display, refill behavior, and game compatibility are unchanged.
 [Subscribe on Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3815611495),
 then restart the game after Steam finishes downloading.
 
-For manual installation, close the game and extract `RemoteCampfire-v0.1.1.zip` into
+For manual installation, close the game and extract `RemoteCampfire-v0.1.2.zip` into
 `%LOCALAPPDATA%\Whiskerwood\Saved\mods\`. The resulting `CampfirePanel` folder
 contains `CampfirePanel.pak` and `CampfirePanel.uplugin`.
 Use either this local package or a Workshop copy, never both.

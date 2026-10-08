@@ -20,8 +20,8 @@ Refills only when you click.
 
 **[Subscribe on Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3815611495)**, then restart the game after Steam finishes downloading.
 
-For manual installation, download `RemoteCampfire-v0.1.1.zip` from the
-[v0.1.1 release](https://github.com/repte/whiskerwood-remote-campfire/releases/tag/v0.1.1).
+For manual installation, download `RemoteCampfire-v0.1.2.zip` from the
+[v0.1.2 release](https://github.com/repte/whiskerwood-remote-campfire/releases/tag/v0.1.2).
 Close the game and extract its `CampfirePanel` folder into:
 
 ```text

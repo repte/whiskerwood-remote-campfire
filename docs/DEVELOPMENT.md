@@ -1,6 +1,6 @@
 # Remote Campfire Development
 
-Version: `0.1.1`. Runtime mod ID: `CampfirePanel`.
+Version: `0.1.2`. Runtime mod ID: `CampfirePanel`.
 Supported game: Whiskerwood `0.7.209.0` for Windows, using the compatible custom
 Unreal Engine 5.8 build and Whiskerwood modkit.
 
@@ -150,7 +150,7 @@ hashes; they exclude rendering, rebuilding rows, refilling, and real-game FPS.
 
 ## Release Contents
 
-`RemoteCampfire-v0.1.1.zip` contains only:
+`RemoteCampfire-v0.1.2.zip` contains only:
 
 ```text
 CampfirePanel/

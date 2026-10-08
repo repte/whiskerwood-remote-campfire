@@ -7,7 +7,7 @@ import unreal
 
 
 BASE = "/Game/Mods/CampfirePanel"
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 LABEL_NAME = "PAL_CampfirePanel"
 LABEL_PATH = f"{BASE}/{LABEL_NAME}"
 RUNTIME_NAMES = ("BP_MapLoad", "WBP_CampfirePanel", "WBP_CampfireRow")

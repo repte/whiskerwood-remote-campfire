@@ -542,7 +542,7 @@ with toolset_registry.tool_raising_exceptions():
         assert unreal.EditorAssetLibrary.save_loaded_asset(widget)
     descriptor_path = HERE.parents[1] / "Content" / "Mods" / "CampfirePanel" / "CampfirePanel.uplugin"
     descriptor = json.loads(descriptor_path.read_text(encoding="utf-8-sig"))
-    assert descriptor["Name"] == "CampfirePanel" and descriptor["Version"] == "0.1.1", descriptor
+    assert descriptor["Name"] == "CampfirePanel" and descriptor["Version"] == "0.1.2", descriptor
     destination = Path(unreal.Paths.project_content_dir()) / "Mods" / "CampfirePanel" / "CampfirePanel.uplugin"
     if destination.resolve() != descriptor_path.resolve():
         destination.write_bytes(descriptor_path.read_bytes())

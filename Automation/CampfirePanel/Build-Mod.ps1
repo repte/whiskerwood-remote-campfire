@@ -32,7 +32,7 @@ foreach ($required in @($editor, $uat, $unrealPak, $python, $project, $descripto
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "Required file missing: $required" }
 }
 $mod = Get-Content -LiteralPath $descriptor -Raw | ConvertFrom-Json
-if ($mod.Name -cne 'CampfirePanel' -or $mod.Version -cne '0.1.1' -or $mod.EngineVersion -cne '5.8') {
+if ($mod.Name -cne 'CampfirePanel' -or $mod.Version -cne '0.1.2' -or $mod.EngineVersion -cne '5.8') {
     throw 'Unexpected CampfirePanel descriptor identity, version, or engine'
 }
 if (@(Get-Process -Name '*Whiskerwood*', '*UnrealEditor*' -ErrorAction SilentlyContinue).Count) {
